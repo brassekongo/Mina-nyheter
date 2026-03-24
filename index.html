@@ -8,7 +8,7 @@
 <style>
   :root { --ink: #1a1714; --paper: #f5f0e8; --accent: #c0392b; --muted: #7a7268; --rule: #c8c0b0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: var(--paper); color: var(--ink); font-family: 'Source Serif 4', serif; min-height: 100vh; padding: 0; }
+  body { background: var(--paper); color: var(--ink); font-family: 'Source Serif 4', serif; min-height: 100vh; }
   body::before {
     content: ''; position: fixed; inset: 0;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
@@ -17,7 +17,7 @@
   .masthead { border-bottom: 3px double var(--ink); padding: 40px 20px; text-align: center; }
   .masthead-title { font-family: 'Playfair Display', serif; font-size: 3.5rem; letter-spacing: -2px; }
   .categories { border-bottom: 1px solid var(--rule); padding: 10px; display: flex; justify-content: center; gap: 15px; overflow-x: auto; }
-  .cat-btn { font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; background: none; border: none; cursor: pointer; color: var(--muted); text-transform: uppercase; padding: 5px 10px; transition: 0.2s; }
+  .cat-btn { font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; background: none; border: none; cursor: pointer; color: var(--muted); text-transform: uppercase; padding: 5px 10px; }
   .cat-btn.active { color: var(--ink); border-bottom: 2px solid var(--accent); }
   .main { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
   .article { padding: 35px 0; border-bottom: 1px solid var(--rule); animation: fadeIn 0.6s ease forwards; }
@@ -37,59 +37,61 @@
 </header>
 
 <nav class="categories">
-    <button class="cat-btn active" onclick="fetchRSS('https://feeds.expressen.se')">Sverige</button>
-    <button class="cat-btn" onclick="fetchRSS('https://feeds.expressen.se')">Världen</button>
-    <button class="cat-btn" onclick="fetchRSS('https://feeds.expressen.se')">Ekonomi</button>
+    <button class="cat-btn active" onclick="fetchNews('https://www.expressen.se')">Sverige</button>
+    <button class="cat-btn" onclick="fetchNews('https://www.expressen.se')">Världen</button>
+    <button class="cat-btn" onclick="fetchNews('https://www.expressen.se')">Ekonomi</button>
 </nav>
 
 <main class="main">
-    <div id="loading">HÄMTAR DAGENS UTGÅVA...</div>
+    <div id="loading">HÄMTAR DAGENS TIDNING...</div>
     <div id="newsContainer">
         <div style="text-align:center; padding:100px 0;">
-            <button onclick="fetchRSS('https://feeds.expressen.se')" style="padding:15px 30px; background:var(--ink); color:white; border:none; font-family:'IBM Plex Mono'; cursor:pointer; text-transform:uppercase;">Öppna Tidningen</button>
+            <button onclick="fetchNews('https://www.expressen.se')" style="padding:15px 30px; background:var(--ink); color:white; border:none; font-family:'IBM Plex Mono'; cursor:pointer; text-transform:uppercase;">Öppna Tidningen</button>
         </div>
     </div>
 </main>
 
-<!-- Detta bibliotek omvandlar nyhetsflödet åt oss så vi slipper "Failed to fetch" -->
-<script src="https://cdn.jsdelivr.net"></script>
-
 <script>
     document.getElementById('dateDisplay').textContent = new Date().toLocaleDateString('sv-SE', { weekday:'long', year:'numeric', month:'long', day:'numeric' }).toUpperCase();
 
-    const parser = new RSSParser();
-    // Vi använder en proxy som är byggd för att tillåta CORS-anrop från GitHub
-    const CORS_PROXY = "https://api.allorigins.win";
-
-    async function fetchRSS(feedUrl) {
+    async function fetchNews(rssUrl) {
         const container = document.getElementById('newsContainer');
         const loader = document.getElementById('loading');
         loader.style.display = 'block';
         container.innerHTML = '';
 
+        // Ny proxy som fungerar bättre 2026
+        const proxyUrl = "https://corsproxy.io?" + encodeURIComponent(rssUrl);
+
         try {
-            const response = await fetch(CORS_PROXY + encodeURIComponent(feedUrl));
-            if (!response.ok) throw new Error("Serverfel");
+            const response = await fetch(proxyUrl);
+            const text = await response.text();
             
-            const data = await response.json();
-            const feed = await parser.parseString(data.contents);
+            // Vi läser XML-datan direkt
+            const parser = new DOMParser();
+            const xml = parser.parseFromString(text, "text/xml");
+            const items = xml.querySelectorAll("item");
 
             loader.style.display = 'none';
-            feed.items.slice(0, 10).forEach(item => {
+            items.forEach((item, i) => {
+                if (i > 10) return;
+                const title = item.querySelector("title").textContent;
+                const link = item.querySelector("link").textContent;
+                const desc = item.querySelector("description").textContent.replace(/<[^>]*>?/gm, '').substring(0, 150);
+                const pubDate = new Date(item.querySelector("pubDate").textContent).toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'});
+
                 const article = document.createElement('div');
                 article.className = 'article';
-                const time = new Date(item.pubDate).toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'});
-                
                 article.innerHTML = `
-                    <div class="article-meta">${item.creator || 'NYHETER'} • ${time}</div>
-                    <h2 class="article-headline"><a href="${item.link}" target="_blank">${item.title}</a></h2>
-                    <div class="article-body">${item.contentSnippet || item.content || ''}</div>
+                    <div class="article-meta">EXPRESSEN • ${pubDate}</div>
+                    <h2 class="article-headline"><a href="${link}" target="_blank">${title}</a></h2>
+                    <div class="article-body">${desc}...</div>
                 `;
                 container.appendChild(article);
             });
         } catch (err) {
             loader.style.display = 'none';
-            container.innerHTML = `<p style="text-align:center; padding:40px; font-family:'IBM Plex Mono';">TEKNISKT FEL: Kunde inte nå nyhetskällan just nu. Prova att ladda om sidan.</p>`;
+            container.innerHTML = `<p style="text-align:center; padding:40px;">Kunde inte ladda nyheter. Testa att trycka Ctrl+F5.</p>`;
         }
     }
 </script>

@@ -45,17 +45,17 @@
 </nav>
 
 <main class="main">
-  <div id="loading" style="display:none;">HÄMTAR NYHETER...</div>
+  <div id="loading" style="display:none;">HÄMTAR NYHETER FRÅN ARKIVEN...</div>
   <div id="newsContainer">
       <div style="text-align:center; padding:100px 0;">
-          <button onclick="fetchNews()" id="startBtn" style="padding:15px 30px; background:var(--ink); color:white; border:none; font-family:'IBM Plex Mono'; cursor:pointer; text-transform:uppercase;">Öppna Dagens Tidning</button>
+          <button onclick="fetchSR()" id="startBtn" style="padding:15px 30px; background:var(--ink); color:white; border:none; font-family:'IBM Plex Mono'; cursor:pointer; text-transform:uppercase;">Öppna Dagens Tidning</button>
       </div>
   </div>
 </main>
 
 <script>
   document.getElementById('dateDisplay').textContent = new Date().toLocaleDateString('sv-SE', { weekday:'long', year:'numeric', month:'long', day:'numeric' }).toUpperCase();
-
+  
   let currentId = "1602";
 
   document.querySelectorAll('.cat-btn').forEach(btn => {
@@ -63,11 +63,11 @@
       document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
       e.target.classList.add('active');
       currentId = e.target.getAttribute('data-id');
-      fetchNews();
+      fetchSR();
     });
   });
 
-  async function fetchNews() {
+  async function fetchSR() {
     const loader = document.getElementById('loading');
     const container = document.getElementById('newsContainer');
     document.getElementById('startBtn')?.parentElement?.remove();
@@ -76,35 +76,28 @@
     container.innerHTML = '';
 
     try {
-      // Vi använder Sveriges Radio - inga nycklar eller proxies behövs!
-      const url = `https://api.sr.se{currentId}&size=10`;
-      const response = await fetch(url);
+      const response = await fetch(`https://api.sr.se{currentId}&size=10`);
       const data = await response.json();
-      
       loader.style.display = 'none';
-      renderNews(data.episodes);
+      
+      data.episodes.forEach(ep => {
+        const article = document.createElement('div');
+        article.className = 'article';
+        const img = ep.imageurl ? `<img src="${ep.imageurl}" class="article-img">` : '';
+        const time = new Date(parseInt(ep.publishdateutc.match(/\d+/))).toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'});
+
+        article.innerHTML = `
+          ${img}
+          <div class="article-meta"><span class="source">SVERIGES RADIO</span> • ${time}</div>
+          <h2 class="article-headline">${ep.title}</h2>
+          <div class="article-body">${ep.description}</div>
+        `;
+        container.appendChild(article);
+      });
     } catch (err) {
       loader.style.display = 'none';
-      container.innerHTML = `<p style="text-align:center;">Kunde inte ladda nyheter: ${err.message}</p>`;
+      container.innerHTML = '<p style="text-align:center;">Något gick fel. Testa att ladda om sidan.</p>';
     }
-  }
-
-  function renderNews(episodes) {
-    const container = document.getElementById('newsContainer');
-    episodes.forEach(ep => {
-      const el = document.createElement('div');
-      el.className = 'article';
-      const imgHtml = ep.imageurl ? `<img src="${ep.imageurl}" class="article-img">` : '';
-      const time = new Date(parseInt(ep.publishdateutc.match(/\d+/))).toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'});
-
-      el.innerHTML = `
-        ${imgHtml}
-        <div class="article-meta"><span class="source">SR NYHETER</span> • ${time}</div>
-        <h2 class="article-headline">${ep.title}</h2>
-        <div class="article-body">${ep.description}</div>
-      `;
-      container.appendChild(el);
-    });
   }
 </script>
 </body>

@@ -9,39 +9,28 @@
   :root { --ink: #1a1714; --paper: #f5f0e8; --accent: #c0392b; --muted: #7a7268; --rule: #c8c0b0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: var(--paper); color: var(--ink); font-family: 'Source Serif 4', serif; min-height: 100vh; }
-  
-  /* Papperseffekt */
   body::before {
     content: ''; position: fixed; inset: 0;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
     pointer-events: none; z-index: 1000; opacity: 0.5;
   }
-
   .masthead { border-bottom: 3px double var(--ink); padding: 20px 40px; text-align: center; }
   .masthead-title { font-family: 'Playfair Display', serif; font-size: 3.5rem; font-weight: 700; }
-  
   .categories { border-bottom: 1px solid var(--rule); padding: 0 40px; display: flex; justify-content: center; overflow-x: auto; }
   .cat-btn { font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; padding: 15px 20px; background: none; border: none; border-bottom: 3px solid transparent; color: var(--muted); cursor: pointer; text-transform: uppercase; }
   .cat-btn.active { color: var(--ink); border-bottom-color: var(--accent); }
-
-  .main { max-width: 850px; margin: 0 auto; padding: 40px 20px; }
-  
+  .main { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
   .article { padding: 35px 0; border-bottom: 1px solid var(--rule); animation: fadeIn 0.6s ease forwards; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
   .article-img { width: 100%; height: 400px; object-fit: cover; margin-bottom: 20px; border-radius: 2px; filter: sepia(0.15) contrast(1.05); background: #e0ddd5; }
-  
   .article-meta { font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; }
   .article-meta .source { color: var(--accent); font-weight: bold; }
-  
   .article-headline { font-family: 'Playfair Display', serif; font-size: 2rem; line-height: 1.2; margin-bottom: 15px; }
   .article-headline a { color: inherit; text-decoration: none; }
   .article-headline a:hover { text-decoration: underline; }
-
   .article-body { font-size: 1.1rem; line-height: 1.7; color: #333; font-weight: 300; }
-
-  #loading { text-align: center; font-family: 'IBM Plex Mono', monospace; padding: 60px; font-size: 0.8rem; letter-spacing: 0.1em; }
-  .error-msg { text-align: center; padding: 40px; color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; border: 1px dashed var(--accent); }
+  #loading { text-align: center; font-family: 'IBM Plex Mono', monospace; padding: 60px; font-size: 0.8rem; }
+  .error-msg { text-align: center; padding: 40px; color: var(--accent); font-family: 'IBM Plex Mono', monospace; border: 1px dashed var(--accent); }
 </style>
 </head>
 <body>
@@ -56,7 +45,6 @@
   <button class="cat-btn" data-q="Världen">Världen</button>
   <button class="cat-btn" data-q="Ekonomi">Ekonomi</button>
   <button class="cat-btn" data-q="Teknik">Teknik</button>
-  <button class="cat-btn" data-q="Klimat">Klimat</button>
 </nav>
 
 <main class="main">
@@ -64,19 +52,18 @@
   <div id="errorArea" class="error-msg" style="display:none;"></div>
   <div id="newsContainer">
       <div style="text-align:center; padding:100px 0;">
-          <button onclick="fetchNews()" style="padding:15px 30px; background:var(--ink); color:white; border:none; font-family:'IBM Plex Mono'; cursor:pointer; text-transform:uppercase; letter-spacing:0.1em;">Öppna Dagens Tidning</button>
+          <button onclick="fetchNews()" style="padding:15px 30px; background:var(--ink); color:white; border:none; font-family:'IBM Plex Mono'; cursor:pointer; text-transform:uppercase;">Öppna Dagens Tidning</button>
       </div>
   </div>
 </main>
 
 <script>
-  const apiKey = "e9b9286dd3a84cf0a812d2b024dd9121";
+  // Ersätt med din nya nyckel från gnews.io
+  const apiKey = "DIN_GNEWS_NYCKEL"; 
   let currentTopic = 'Sverige';
 
-  // Sätt datum direkt
   document.getElementById('dateDisplay').textContent = new Date().toLocaleDateString('sv-SE', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 
-  // Knapp-logik
   document.querySelectorAll('.cat-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
@@ -95,29 +82,25 @@
     container.innerHTML = '';
     errorArea.style.display = 'none';
 
-    // Vi använder en kraftfullare proxy-instans för att undvika blockeringar
-    const targetUrl = `https://newsapi.org{encodeURIComponent(currentTopic)}&language=sv&sortBy=publishedAt&pageSize=10&apiKey=${apiKey}`;
-    const proxyUrl = `https://api.allorigins.win{encodeURIComponent(targetUrl)}`;
+    // GNews API URL - fungerar direkt i webbläsaren!
+    const url = `https://gnews.io{encodeURIComponent(currentTopic)}&lang=sv&country=se&max=10&apikey=${apiKey}`;
 
     try {
-      const response = await fetch(proxyUrl);
-      if (!response.ok) throw new Error("Kunde inte nå servern");
-      
-      const raw = await response.json();
-      const data = JSON.parse(raw.contents); // Packar upp datan från proxyn
+      const response = await fetch(url);
+      const data = await response.json();
 
-      if (data.status === "error") throw new Error(data.message);
+      if (data.errors) throw new Error(data.errors[0]);
       
       loader.style.display = 'none';
       if (data.articles && data.articles.length > 0) {
           renderNews(data.articles);
       } else {
-          errorArea.textContent = "INGA ARTIKLAR HITTADES FÖR DETTA ÄMNE.";
+          errorArea.textContent = "INGA ARTIKLAR HITTADES.";
           errorArea.style.display = 'block';
       }
     } catch (err) {
       loader.style.display = 'none';
-      errorArea.innerHTML = `TEKNISKT FEL: ${err.message}<br><br><small>Tips: Om du ser detta ofta, testa att köra filen via 'Live Server' i VS Code.</small>`;
+      errorArea.innerHTML = `FEL: ${err.message}`;
       errorArea.style.display = 'block';
     }
   }
@@ -127,18 +110,15 @@
     articles.forEach(art => {
       const articleEl = document.createElement('div');
       articleEl.className = 'article';
+      const imgHtml = art.image ? `<img src="${art.image}" class="article-img" onerror="this.style.display='none'">` : '';
       
-      // Bild-logik
-      const imgHtml = art.urlToImage ? `<img src="${art.urlToImage}" class="article-img" onerror="this.style.display='none'">` : '';
-      const pubDate = new Date(art.publishedAt).toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'});
-
       articleEl.innerHTML = `
         ${imgHtml}
         <div class="article-meta">
-          <span class="source">${art.source.name}</span> • <span>${pubDate}</span>
+          <span class="source">${art.source.name}</span> • <span>${new Date(art.publishedAt).toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'})}</span>
         </div>
         <h2 class="article-headline"><a href="${art.url}" target="_blank">${art.title}</a></h2>
-        <div class="article-body">${art.description || 'Ingen ytterligare beskrivning tillgänglig.'}</div>
+        <div class="article-body">${art.description || ''}</div>
       `;
       container.appendChild(articleEl);
     });
@@ -146,4 +126,3 @@
 </script>
 </body>
 </html>
-

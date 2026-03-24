@@ -22,53 +22,47 @@
   .main { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
   .article { padding: 35px 0; border-bottom: 1px solid var(--rule); animation: fadeIn 0.6s ease forwards; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-  .article-img { width: 100%; height: 400px; object-fit: cover; margin-bottom: 20px; border-radius: 2px; filter: sepia(0.15) contrast(1.05); background: #e0ddd5; }
+  .article-img { width: 100%; height: 350px; object-fit: cover; margin-bottom: 20px; border-radius: 2px; filter: sepia(0.1); background: #e0ddd5; }
   .article-meta { font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; }
   .article-meta .source { color: var(--accent); font-weight: bold; }
-  .article-headline { font-family: 'Playfair Display', serif; font-size: 2rem; line-height: 1.2; margin-bottom: 15px; }
-  .article-headline a { color: inherit; text-decoration: none; }
-  .article-headline a:hover { text-decoration: underline; }
-  .article-body { font-size: 1.1rem; line-height: 1.7; color: #333; font-weight: 300; }
-  #loading { text-align: center; font-family: 'IBM Plex Mono', monospace; padding: 60px; font-size: 0.8rem; }
-  .error-msg { text-align: center; padding: 40px; color: var(--accent); font-family: 'IBM Plex Mono', monospace; border: 1px dashed var(--accent); }
+  .article-headline { font-family: 'Playfair Display', serif; font-size: 1.8rem; line-height: 1.2; margin-bottom: 15px; }
+  .article-body { font-size: 1.1rem; line-height: 1.7; color: #333; }
+  #loading { text-align: center; font-family: 'IBM Plex Mono', monospace; padding: 60px; }
 </style>
 </head>
 <body>
 
 <header class="masthead">
     <div class="masthead-title">KLARTTEXT</div>
-    <div id="dateDisplay" style="font-family:'IBM Plex Mono'; font-size:0.7rem; color:var(--muted); margin-top:10px; text-transform: uppercase;"></div>
+    <div id="dateDisplay" style="font-family:'IBM Plex Mono'; font-size:0.7rem; color:var(--muted); margin-top:10px;"></div>
 </header>
 
 <nav class="categories">
-  <button class="cat-btn active" data-q="Sverige">Sverige</button>
-  <button class="cat-btn" data-q="Världen">Världen</button>
-  <button class="cat-btn" data-q="Ekonomi">Ekonomi</button>
-  <button class="cat-btn" data-q="Teknik">Teknik</button>
+  <button class="cat-btn active" data-id="1602">Ekot</button>
+  <button class="cat-btn" data-id="2034">Ekonomi</button>
+  <button class="cat-btn" data-id="412">Vetenskap</button>
+  <button class="cat-btn" data-id="478">Kultur</button>
 </nav>
 
 <main class="main">
-  <div id="loading" style="display:none;">HÄMTAR NYHETER FRÅN ARKIVEN...</div>
-  <div id="errorArea" class="error-msg" style="display:none;"></div>
+  <div id="loading" style="display:none;">HÄMTAR NYHETER...</div>
   <div id="newsContainer">
       <div style="text-align:center; padding:100px 0;">
-          <button onclick="fetchNews()" style="padding:15px 30px; background:var(--ink); color:white; border:none; font-family:'IBM Plex Mono'; cursor:pointer; text-transform:uppercase;">Öppna Dagens Tidning</button>
+          <button onclick="fetchNews()" id="startBtn" style="padding:15px 30px; background:var(--ink); color:white; border:none; font-family:'IBM Plex Mono'; cursor:pointer; text-transform:uppercase;">Öppna Dagens Tidning</button>
       </div>
   </div>
 </main>
 
 <script>
-  // Ersätt med din nya nyckel från gnews.io
-  const apiKey = "3999fecc893115a6c5a8b85bbd298588"; 
-  let currentTopic = 'Sverige';
+  document.getElementById('dateDisplay').textContent = new Date().toLocaleDateString('sv-SE', { weekday:'long', year:'numeric', month:'long', day:'numeric' }).toUpperCase();
 
-  document.getElementById('dateDisplay').textContent = new Date().toLocaleDateString('sv-SE', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  let currentId = "1602";
 
   document.querySelectorAll('.cat-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
       e.target.classList.add('active');
-      currentTopic = e.target.getAttribute('data-q');
+      currentId = e.target.getAttribute('data-id');
       fetchNews();
     });
   });
@@ -76,51 +70,40 @@
   async function fetchNews() {
     const loader = document.getElementById('loading');
     const container = document.getElementById('newsContainer');
-    const errorArea = document.getElementById('errorArea');
+    document.getElementById('startBtn')?.parentElement?.remove();
 
     loader.style.display = 'block';
     container.innerHTML = '';
-    errorArea.style.display = 'none';
-
-    // GNews API URL - fungerar direkt i webbläsaren!
-    const url = `https://gnews.io{encodeURIComponent(currentTopic)}&lang=sv&country=se&max=10&apikey=${apiKey}`;
 
     try {
+      // Vi använder Sveriges Radio - inga nycklar eller proxies behövs!
+      const url = `https://api.sr.se{currentId}&size=10`;
       const response = await fetch(url);
       const data = await response.json();
-
-      if (data.errors) throw new Error(data.errors[0]);
       
       loader.style.display = 'none';
-      if (data.articles && data.articles.length > 0) {
-          renderNews(data.articles);
-      } else {
-          errorArea.textContent = "INGA ARTIKLAR HITTADES.";
-          errorArea.style.display = 'block';
-      }
+      renderNews(data.episodes);
     } catch (err) {
       loader.style.display = 'none';
-      errorArea.innerHTML = `FEL: ${err.message}`;
-      errorArea.style.display = 'block';
+      container.innerHTML = `<p style="text-align:center;">Kunde inte ladda nyheter: ${err.message}</p>`;
     }
   }
 
-  function renderNews(articles) {
+  function renderNews(episodes) {
     const container = document.getElementById('newsContainer');
-    articles.forEach(art => {
-      const articleEl = document.createElement('div');
-      articleEl.className = 'article';
-      const imgHtml = art.image ? `<img src="${art.image}" class="article-img" onerror="this.style.display='none'">` : '';
-      
-      articleEl.innerHTML = `
+    episodes.forEach(ep => {
+      const el = document.createElement('div');
+      el.className = 'article';
+      const imgHtml = ep.imageurl ? `<img src="${ep.imageurl}" class="article-img">` : '';
+      const time = new Date(parseInt(ep.publishdateutc.match(/\d+/))).toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'});
+
+      el.innerHTML = `
         ${imgHtml}
-        <div class="article-meta">
-          <span class="source">${art.source.name}</span> • <span>${new Date(art.publishedAt).toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'})}</span>
-        </div>
-        <h2 class="article-headline"><a href="${art.url}" target="_blank">${art.title}</a></h2>
-        <div class="article-body">${art.description || ''}</div>
+        <div class="article-meta"><span class="source">SR NYHETER</span> • ${time}</div>
+        <h2 class="article-headline">${ep.title}</h2>
+        <div class="article-body">${ep.description}</div>
       `;
-      container.appendChild(articleEl);
+      container.appendChild(el);
     });
   }
 </script>
